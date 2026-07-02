@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>台股成交量查詢</title>
+</head>
+<body>
+  <h2>台股成交量前20名查詢</h2>
+
+  <input id="date" type="date">
+  <button onclick="loadTop20()">查詢</button>
+
+  <pre id="result">請選日期後查詢</pre>
+
+  <script>
+    async function loadTop20() {
+      const date = document.getElementById("date").value;
+      const url = date ? `/top20?date=${date}` : `/top20`;
+
+      document.getElementById("result").textContent = "查詢中...";
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      document.getElementById("result").textContent =
+        JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>
