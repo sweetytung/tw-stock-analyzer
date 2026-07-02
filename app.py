@@ -1,11 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from services.stock_service import get_top20_volume
 
 app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "TW Stock Analyzer API is running!"
+    return render_template("index.html")
 
 @app.route("/health")
 def health():
