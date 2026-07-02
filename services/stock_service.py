@@ -1,58 +1,59 @@
 import requests
 import pandas as pd
-from datetime import datetime, timedelta
-
-FINMIND_URL = "https://api.finmindtrade.com/api/v4/data"
-
-
-def fetch_finmind(dataset, start_date, end_date=None, data_id=None):
-    params = {
-        "dataset": dataset,
-        "start_date": start_date,
-    }
-
-    if end_date:
-        params["end_date"] = end_date
-
-    if data_id:
-        params["data_id"] = data_id
-
-    response = requests.get(FINMIND_URL, params=params, timeout=30)
-    response.raise_for_status()
-    data = response.json().get("data", [])
-    return pd.DataFrame(data)
-
+from datetime import datetime
 
 def get_top20_volume(date=None):
     if date is None:
-        date = datetime.now().strftime("%Y-%m-%d")
+        date = datetime.now().strftime("%Y%m%d")
+    else:
+        date = date.replace("-", "")
 
-    df = fetch_finmind("TaiwanStockPrice", date, date)
+    url = "https://www.twse.com.tw/rwd/zh/afterTrading/MI_INDEX"
+    params = {
+        "date": date,
+        "type": "ALLBUT0999",
+        "response": "json"
+    }
 
-    if df.empty:
-        return {
-            "date": date,
-            "message": "查無資料，可能是假日或資料尚未更新",
-            "data": []
-        }
+    r = requests.get(url, params=params, timeout=30)
+    r.raise_for_status()
+    data = r.json()
 
-    df = df[df["stock_id"].astype(str).str.match(r"^\d{4}$")]
-    df["Trading_Volume"] = pd.to_numeric(df["Trading_Volume"], errors="coerce").fillna(0)
+    tables = data.get("tables", [])
+    rows = []
 
-    top20 = df.sort_values("Trading_Volume", ascending=False).head(20)
+    for table in tables:
+        fields = table.get("fields", [])
+        if "證券代號" in fields and "成交股數" in fields and "收盤價" in fields:
+            rows = table.get("data", [])
+            break
 
     result = []
-    for idx, row in enumerate(top20.itertuples(), start=1):
+
+    for row in rows:
+        stock_id = row[0].strip()
+        stock_name = row[1].strip()
+
+        if not stock_id.isdigit() or len(stock_id) != 4:
+            continue
+
+        volume = int(row[2].replace(",", ""))
+        close_text = row[8].replace(",", "").strip()
+
+        if close_text == "--":
+            continue
+
         result.append({
-            "rank": idx,
-            "stock_id": row.stock_id,
-            "date": row.date,
-            "open": float(row.open),
-            "high": float(row.max),
-            "low": float(row.min),
-            "close": float(row.close),
-            "volume": int(row.Trading_Volume)
+            "stock_id": stock_id,
+            "stock_name": stock_name,
+            "close": float(close_text),
+            "volume": volume
         })
+
+    result = sorted(result, key=lambda x: x["volume"], reverse=True)[:20]
+
+    for i, item in enumerate(result, 1):
+        item["rank"] = i
 
     return {
         "date": date,
