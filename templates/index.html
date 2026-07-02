@@ -8,22 +8,61 @@
   <h2>台股成交量前20名查詢</h2>
 
   <input id="date" type="date">
-  <button onclick="loadTop20()">查詢</button>
+  <button onclick="loadData()">查詢</button>
 
-  <pre id="result">請選日期後查詢</pre>
+  <div id="result">請選日期後查詢</div>
 
   <script>
-    async function loadTop20() {
+    async function loadData() {
       const date = document.getElementById("date").value;
-      const url = date ? `/top20?date=${date}` : `/top20`;
+      const url = date ? `/top20/detail?date=${date}` : `/top20/detail`;
+      const box = document.getElementById("result");
 
-      document.getElementById("result").textContent = "查詢中...";
+      box.innerHTML = "查詢中...";
 
-      const res = await fetch(url);
-      const data = await res.json();
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
 
-      document.getElementById("result").textContent =
-        JSON.stringify(data, null, 2);
+        let html = `<h3>查詢日期：${data.date}</h3>`;
+        html += `<table border="1" cellpadding="6" cellspacing="0">`;
+        html += `
+          <tr>
+            <th>排名</th>
+            <th>代號</th>
+            <th>股票名稱</th>
+            <th>收盤價</th>
+            <th>成交量張數</th>
+            <th>5MA</th>
+            <th>10MA</th>
+            <th>20MA</th>
+            <th>交叉訊號</th>
+          </tr>
+        `;
+
+        data.data.forEach(item => {
+          html += `
+            <tr>
+              <td>${item.rank}</td>
+              <td>${item.stock_id}</td>
+              <td>${item.stock_name}</td>
+              <td>${item.close}</td>
+              <td>${item.volume.toLocaleString()}</td>
+              <td>${item.detail.ma["5MA"] ?? "-"}</td>
+              <td>${item.detail.ma["10MA"] ?? "-"}</td>
+              <td>${item.detail.ma["20MA"] ?? "-"}</td>
+              <td>${item.detail.signal}</td>
+            </tr>
+          `;
+        });
+
+        html += `</table>`;
+
+        box.innerHTML = html;
+
+      } catch (err) {
+        box.innerHTML = "查詢失敗：" + err;
+      }
     }
   </script>
 </body>
