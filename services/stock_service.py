@@ -107,8 +107,16 @@ def get_stock_price_history(stock_id, date):
                 "volume": volume
             })
 
-    df = pd.DataFrame(rows).drop_duplicates("date").sort_values("date")
-    return df
+   if not rows:
+    return pd.DataFrame(columns=["date", "close", "volume"])
+
+df = pd.DataFrame(rows)
+
+if "date" not in df.columns:
+    return pd.DataFrame(columns=["date", "close", "volume"])
+
+df = df.drop_duplicates("date").sort_values("date")
+return df
 
 
 def get_institution_by_date(date):
