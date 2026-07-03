@@ -174,6 +174,11 @@ def get_stock_detail(stock_id, stock_name, date):
             "stock_id": stock_id,
             "stock_name": stock_name,
             "history": [],
+            "institution": {
+                "外資買賣超張數": 0,
+                "投信買賣超張數": 0,
+                "自營商買賣超張數": 0
+            },
             "ma": {},
             "signal": "股價資料不足"
         }
@@ -200,6 +205,7 @@ def get_stock_detail(stock_id, stock_name, date):
             signal = "5MA跌破20MA：死亡交叉"
 
     history = []
+
     for _, row in df.tail(5).iterrows():
         twse_date = row["date"].replace("-", "")
         inst = get_institution_by_date(twse_date).get(stock_id, {
@@ -215,10 +221,21 @@ def get_stock_detail(stock_id, stock_name, date):
             **inst
         })
 
+    latest_inst = history[-1] if history else {
+        "外資買賣超張數": 0,
+        "投信買賣超張數": 0,
+        "自營商買賣超張數": 0
+    }
+
     return {
         "stock_id": stock_id,
         "stock_name": stock_name,
         "history": history,
+        "institution": {
+            "外資買賣超張數": latest_inst.get("外資買賣超張數", 0),
+            "投信買賣超張數": latest_inst.get("投信買賣超張數", 0),
+            "自營商買賣超張數": latest_inst.get("自營商買賣超張數", 0)
+        },
         "ma": {
             "5MA": round(float(latest["MA5"]), 2) if pd.notna(latest["MA5"]) else None,
             "10MA": round(float(latest["MA10"]), 2) if pd.notna(latest["MA10"]) else None,
@@ -242,6 +259,11 @@ def get_top20_detail(date=None):
         except Exception as e:
             item["detail"] = {
                 "history": [],
+                "institution": {
+                    "外資買賣超張數": 0,
+                    "投信買賣超張數": 0,
+                    "自營商買賣超張數": 0
+                },
                 "ma": {},
                 "signal": f"錯誤：{str(e)}"
             }
