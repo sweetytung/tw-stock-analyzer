@@ -2,42 +2,156 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>台股成交量查詢</title>
+  <title>台股成交量查詢系統</title>
+  <style>
+    body {
+      font-family: Arial, "Microsoft JhengHei", sans-serif;
+      padding: 20px;
+      background: #f5f6fa;
+    }
+
+    h2 {
+      margin-bottom: 10px;
+    }
+
+    .card {
+      background: white;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      padding: 8px 12px;
+      font-size: 15px;
+      margin-right: 6px;
+    }
+
+    button {
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background: #1f2937;
+      color: white;
+    }
+
+    tr:hover {
+      background: #f1f5f9;
+    }
+
+    .buy {
+      color: #d00000;
+      font-weight: bold;
+    }
+
+    .sell {
+      color: #008000;
+      font-weight: bold;
+    }
+
+    .gold {
+      color: #d97706;
+      font-weight: bold;
+    }
+
+    .dead {
+      color: #2563eb;
+      font-weight: bold;
+    }
+
+    .detail {
+      background: #fff7ed;
+      padding: 12px;
+    }
+
+    .small-table {
+      margin-top: 10px;
+      width: 70%;
+    }
+  </style>
 </head>
+
 <body>
-  <h2>台股成交量前20名查詢</h2>
+  <div class="card">
+    <h2>台股成交量前20名查詢</h2>
+    <p>資料來源：證交所公開資料。首頁只查成交量排行，點「查看明細」才查單檔均線，避免 Render 記憶體不足。</p>
 
-  <input id="date" type="date">
-  <button onclick="loadData()">查詢</button>
+    <input id="date" type="date">
+    <button onclick="loadTop20()">查詢成交量前20名</button>
+  </div>
 
-  <div id="result">請選日期後查詢</div>
+  <div id="result" class="card">請選日期後查詢</div>
 
   <script>
-    async function loadData() {
+    function formatNumber(value) {
+      if (value === null || value === undefined) return "-";
+      return Number(value).toLocaleString();
+    }
+
+    function formatInst(value) {
+      if (value > 0) return `<span class="buy">+${formatNumber(value)}</span>`;
+      if (value < 0) return `<span class="sell">${formatNumber(value)}</span>`;
+      return "0";
+    }
+
+    function formatSignal(signal) {
+      if (!signal) return "-";
+      if (signal.includes("黃金")) return `<span class="gold">${signal}</span>`;
+      if (signal.includes("死亡")) return `<span class="dead">${signal}</span>`;
+      return signal;
+    }
+
+    async function loadTop20() {
       const date = document.getElementById("date").value;
-      const url = date ? `/top20/detail?date=${date}` : `/top20/detail`;
+      const url = date ? `/top20?date=${date}` : `/top20`;
       const box = document.getElementById("result");
 
       box.innerHTML = "查詢中...";
 
       try {
         const res = await fetch(url);
+
+        if (!res.ok) {
+          const text = await res.text();
+          box.innerHTML = "API錯誤：<pre>" + text + "</pre>";
+          return;
+        }
+
         const data = await res.json();
 
         let html = `<h3>查詢日期：${data.date}</h3>`;
-        html += `<table border="1" cellpadding="6" cellspacing="0">`;
         html += `
-          <tr>
-            <th>排名</th>
-            <th>代號</th>
-            <th>股票名稱</th>
-            <th>收盤價</th>
-            <th>成交量張數</th>
-            <th>5MA</th>
-            <th>10MA</th>
-            <th>20MA</th>
-            <th>交叉訊號</th>
-          </tr>
+          <table>
+            <tr>
+              <th>排名</th>
+              <th>代號</th>
+              <th>股票名稱</th>
+              <th>收盤價</th>
+              <th>成交量(張)</th>
+              <th>外資買賣超</th>
+              <th>投信買賣超</th>
+              <th>自營商買賣超</th>
+              <th>明細</th>
+            </tr>
         `;
 
         data.data.forEach(item => {
@@ -47,21 +161,94 @@
               <td>${item.stock_id}</td>
               <td>${item.stock_name}</td>
               <td>${item.close}</td>
-              <td>${item.volume.toLocaleString()}</td>
-              <td>${item.detail.ma["5MA"] ?? "-"}</td>
-              <td>${item.detail.ma["10MA"] ?? "-"}</td>
-              <td>${item.detail.ma["20MA"] ?? "-"}</td>
-              <td>${item.detail.signal}</td>
+              <td>${formatNumber(item.volume)}</td>
+              <td>${formatInst(item["外資買賣超張數"])}</td>
+              <td>${formatInst(item["投信買賣超張數"])}</td>
+              <td>${formatInst(item["自營商買賣超張數"])}</td>
+              <td>
+                <button onclick="loadDetail('${item.stock_id}', '${item.stock_name}', '${data.date}')">
+                  查看明細
+                </button>
+              </td>
+            </tr>
+            <tr id="detail-${item.stock_id}" style="display:none;">
+              <td colspan="9" class="detail"></td>
             </tr>
           `;
         });
 
         html += `</table>`;
-
         box.innerHTML = html;
 
       } catch (err) {
         box.innerHTML = "查詢失敗：" + err;
+      }
+    }
+
+    async function loadDetail(stockId, stockName, date) {
+      const row = document.getElementById(`detail-${stockId}`);
+      const cell = row.querySelector("td");
+
+      if (row.style.display === "table-row") {
+        row.style.display = "none";
+        return;
+      }
+
+      row.style.display = "table-row";
+      cell.innerHTML = "明細查詢中...";
+
+      try {
+        const url = `/stock/${stockId}?name=${encodeURIComponent(stockName)}&date=${date}`;
+        const res = await fetch(url);
+
+        if (!res.ok) {
+          const text = await res.text();
+          cell.innerHTML = "明細 API 錯誤：<pre>" + text + "</pre>";
+          return;
+        }
+
+        const data = await res.json();
+
+        let html = `
+          <h3>${data.stock_id} ${data.stock_name}</h3>
+          <p>
+            <b>5MA：</b>${data.ma["5MA"] ?? "-"}　
+            <b>10MA：</b>${data.ma["10MA"] ?? "-"}　
+            <b>20MA：</b>${data.ma["20MA"] ?? "-"}　
+            <b>訊號：</b>${formatSignal(data.signal)}
+          </p>
+
+          <p>
+            <b>當日法人買賣超：</b>
+            外資 ${formatInst(data.institution["外資買賣超張數"])} 張　
+            投信 ${formatInst(data.institution["投信買賣超張數"])} 張　
+            自營商 ${formatInst(data.institution["自營商買賣超張數"])} 張
+          </p>
+
+          <h4>最近5個交易日股價</h4>
+          <table class="small-table">
+            <tr>
+              <th>日期</th>
+              <th>收盤價</th>
+              <th>成交量(張)</th>
+            </tr>
+        `;
+
+        data.history.forEach(h => {
+          html += `
+            <tr>
+              <td>${h["日期"]}</td>
+              <td>${h["收盤價"]}</td>
+              <td>${formatNumber(h["成交量張數"])}</td>
+            </tr>
+          `;
+        });
+
+        html += `</table>`;
+        cell.innerHTML = html;
+
+      } catch (err) {
+        cell.innerHTML = "明細查詢失敗：" + err;
       }
     }
   </script>
