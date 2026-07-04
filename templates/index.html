@@ -3,29 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <title>台股成交量查詢系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body {
       font-family: Arial, "Microsoft JhengHei", sans-serif;
       padding: 20px;
       background: #f5f6fa;
-    }
-
-    h2 {
-      margin-bottom: 10px;
+      color: #111827;
     }
 
     .card {
-      background: white;
+      background: #fff;
       padding: 16px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
       margin-bottom: 20px;
+    }
+
+    h2, h3 {
+      margin-top: 0;
     }
 
     input, button {
       padding: 8px 12px;
       font-size: 15px;
-      margin-right: 6px;
+      margin: 4px 4px 4px 0;
     }
 
     button {
@@ -36,17 +38,27 @@
       border-radius: 6px;
     }
 
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
       background: white;
       font-size: 14px;
+      min-width: 980px;
     }
 
     th, td {
       border: 1px solid #ddd;
       padding: 8px;
       text-align: center;
+      white-space: nowrap;
     }
 
     th {
@@ -59,12 +71,12 @@
     }
 
     .buy {
-      color: #d00000;
+      color: #dc2626;
       font-weight: bold;
     }
 
     .sell {
-      color: #008000;
+      color: #16a34a;
       font-weight: bold;
     }
 
@@ -80,12 +92,24 @@
 
     .detail {
       background: #fff7ed;
-      padding: 12px;
+      text-align: left;
     }
 
     .small-table {
       margin-top: 10px;
-      width: 70%;
+      width: auto;
+      min-width: 520px;
+    }
+
+    .note {
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      text-align: left;
+      color: #b91c1c;
     }
   </style>
 </head>
@@ -93,7 +117,9 @@
 <body>
   <div class="card">
     <h2>台股成交量前20名查詢</h2>
-    <p>資料來源：證交所公開資料。首頁只查成交量排行，點「查看明細」才查單檔均線，避免 Render 記憶體不足。</p>
+    <p class="note">
+      資料來源：證交所公開資料。首頁只查成交量排行與當日三大法人；點「查看明細」才查單檔均線，避免 Render Free 記憶體不足。
+    </p>
 
     <input id="date" type="date">
     <button onclick="loadTop20()">查詢成交量前20名</button>
@@ -103,11 +129,12 @@
 
   <script>
     function formatNumber(value) {
-      if (value === null || value === undefined) return "-";
+      if (value === null || value === undefined || value === "") return "-";
       return Number(value).toLocaleString();
     }
 
     function formatInst(value) {
+      value = Number(value || 0);
       if (value > 0) return `<span class="buy">+${formatNumber(value)}</span>`;
       if (value < 0) return `<span class="sell">${formatNumber(value)}</span>`;
       return "0";
@@ -132,27 +159,30 @@
 
         if (!res.ok) {
           const text = await res.text();
-          box.innerHTML = "API錯誤：<pre>" + text + "</pre>";
+          box.innerHTML = "API 錯誤：<pre>" + text + "</pre>";
           return;
         }
 
         const data = await res.json();
 
+        if (!data.data || data.data.length === 0) {
+          box.innerHTML = `<h3>查詢日期：${data.date || "-"}</h3><p>查無資料，可能是假日或資料尚未更新。</p>`;
+          return;
+        }
+
         let html = `<h3>查詢日期：${data.date}</h3>`;
-        html += `
-          <table>
-            <tr>
-              <th>排名</th>
-              <th>代號</th>
-              <th>股票名稱</th>
-              <th>收盤價</th>
-              <th>成交量(張)</th>
-              <th>外資買賣超</th>
-              <th>投信買賣超</th>
-              <th>自營商買賣超</th>
-              <th>明細</th>
-            </tr>
-        `;
+        html += `<div class="table-wrap"><table>
+          <tr>
+            <th>排名</th>
+            <th>代號</th>
+            <th>股票名稱</th>
+            <th>收盤價</th>
+            <th>成交量(張)</th>
+            <th>外資買賣超</th>
+            <th>投信買賣超</th>
+            <th>自營商買賣超</th>
+            <th>明細</th>
+          </tr>`;
 
         data.data.forEach(item => {
           html += `
@@ -173,11 +203,10 @@
             </tr>
             <tr id="detail-${item.stock_id}" style="display:none;">
               <td colspan="9" class="detail"></td>
-            </tr>
-          `;
+            </tr>`;
         });
 
-        html += `</table>`;
+        html += `</table></div>`;
         box.innerHTML = html;
 
       } catch (err) {
@@ -226,25 +255,28 @@
           </p>
 
           <h4>最近5個交易日股價</h4>
+          <div class="table-wrap">
           <table class="small-table">
             <tr>
               <th>日期</th>
               <th>收盤價</th>
               <th>成交量(張)</th>
-            </tr>
-        `;
+            </tr>`;
 
-        data.history.forEach(h => {
-          html += `
-            <tr>
-              <td>${h["日期"]}</td>
-              <td>${h["收盤價"]}</td>
-              <td>${formatNumber(h["成交量張數"])}</td>
-            </tr>
-          `;
-        });
+        if (!data.history || data.history.length === 0) {
+          html += `<tr><td colspan="3">查無最近5日資料</td></tr>`;
+        } else {
+          data.history.forEach(h => {
+            html += `
+              <tr>
+                <td>${h["日期"]}</td>
+                <td>${h["收盤價"]}</td>
+                <td>${formatNumber(h["成交量張數"])}</td>
+              </tr>`;
+          });
+        }
 
-        html += `</table>`;
+        html += `</table></div>`;
         cell.innerHTML = html;
 
       } catch (err) {
