@@ -135,10 +135,13 @@ def get_stock_price_history(stock_id, date=None):
     date_obj = datetime.strptime(date, "%Y%m%d")
 
     # 抓本月與上個月，避免月初資料不足以計算 MA20
-    months = [
-        date_obj.strftime("%Y%m%d"),
-        (date_obj.replace(day=1) - timedelta(days=1)).strftime("%Y%m%d")
-    ]
+    this_month = date_obj.replace(day=1)
+last_month = (this_month - timedelta(days=1)).replace(day=1)
+
+months = [
+    this_month.strftime("%Y%m%d"),
+    last_month.strftime("%Y%m%d")
+]
 
     rows = []
 
