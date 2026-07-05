@@ -157,17 +157,18 @@ def get_stock_price_history(stock_id, date=None):
                 "response": "json"
             })
 
-            if js.get("stat") != "OK":
+            data = js.get("data", [])
+            if not data:
                 continue
 
-            for row in js.get("data", []):
+            for row in data:
                 try:
                     roc_date = row[0]
                     y, m, d = roc_date.split("/")
                     western_date = f"{int(y) + 1911}-{m}-{d}"
 
-                    volume = int(parse_num(row[1]) // 1000)
                     close = parse_num(row[6])
+                    volume = int(parse_num(row[1]) // 1000)
 
                     if close > 0:
                         rows.append({
@@ -185,16 +186,13 @@ def get_stock_price_history(stock_id, date=None):
         return pd.DataFrame(columns=["date", "close", "volume"])
 
     df = pd.DataFrame(rows)
+    df = df.drop_duplicates("date").sort_values("date").reset_index(drop=True)
 
-    if "date" not in df.columns:
-        return pd.DataFrame(columns=["date", "close", "volume"])
+    # 只保留查詢日以前資料
+    target_date = datetime.strptime(date, "%Y%m%d").strftime("%Y-%m-%d")
+    df = df[df["date"] <= target_date]
 
-    return (
-        df.drop_duplicates("date")
-          .sort_values("date")
-          .reset_index(drop=True)
-    )
-def detect_cross(df):
+    return dfdef detect_cross(df):
     if len(df) < 2:
         return "資料不足"
 
