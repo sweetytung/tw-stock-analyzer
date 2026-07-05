@@ -194,10 +194,7 @@ def get_stock_price_history(stock_id, date=None):
 
     return df
 
-
-
-    
-    def detect_cross(df):
+def detect_cross(df):
     if len(df) < 2:
         return "資料不足"
 
