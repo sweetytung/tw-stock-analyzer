@@ -134,14 +134,13 @@ def get_stock_price_history(stock_id, date=None):
     date = to_twse_date(date)
     date_obj = datetime.strptime(date, "%Y%m%d")
 
-    # 抓本月與上個月，避免月初資料不足以計算 MA20
     this_month = date_obj.replace(day=1)
-last_month = (this_month - timedelta(days=1)).replace(day=1)
+    last_month = (this_month - timedelta(days=1)).replace(day=1)
 
-months = [
-    this_month.strftime("%Y%m%d"),
-    last_month.strftime("%Y%m%d")
-]
+    months = [
+        this_month.strftime("%Y%m%d"),
+        last_month.strftime("%Y%m%d")
+    ]
 
     rows = []
 
@@ -190,8 +189,6 @@ months = [
           .sort_values("date")
           .reset_index(drop=True)
     )
-
-
 def detect_cross(df):
     if len(df) < 2:
         return "資料不足"
