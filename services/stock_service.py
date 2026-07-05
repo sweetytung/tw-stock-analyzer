@@ -33,10 +33,11 @@ def twse_get(url, params):
 
 def get_institution_map(date):
     date = to_twse_date(date)
+
     try:
         js = twse_get(TWSE_T86, {
             "date": date,
-            "selectType": "ALLBUT0999",
+            "selectType": "ALL",
             "response": "json"
         })
 
@@ -46,29 +47,33 @@ def get_institution_map(date):
         result = {}
 
         for row in data:
-            if not row:
+            if not row or len(row) < 12:
                 continue
 
             stock_id = str(row[0]).strip()
 
-            def find_field(keyword):
-                for i, field_name in enumerate(fields):
-                    if keyword in field_name and i < len(row):
+            def get_value(field_keyword):
+                for i, f in enumerate(fields):
+                    if field_keyword in f and i < len(row):
                         return int(parse_num(row[i]) // 1000)
                 return 0
 
+            foreign = get_value("外陸資買賣超股數")
+            investment = get_value("投信買賣超股數")
+            dealer = get_value("自營商買賣超股數")
+
             result[stock_id] = {
-                "外資買賣超張數": find_field("外陸資買賣超股數"),
-                "投信買賣超張數": find_field("投信買賣超股數"),
-                "自營商買賣超張數": find_field("自營商買賣超股數")
+                "外資買賣超張數": foreign,
+                "投信買賣超張數": investment,
+                "自營商買賣超張數": dealer
             }
 
         return result
 
-    except Exception:
+    except Exception as e:
+        print("get_institution_map error:", e)
         return {}
-
-
+        
 def get_top20_volume(date=None):
     date = to_twse_date(date)
     institution_map = get_institution_map(date)
