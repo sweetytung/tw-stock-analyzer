@@ -192,7 +192,12 @@ def get_stock_price_history(stock_id, date=None):
     target_date = datetime.strptime(date, "%Y%m%d").strftime("%Y-%m-%d")
     df = df[df["date"] <= target_date]
 
-    return dfdef detect_cross(df):
+    return df
+
+
+
+    
+    def detect_cross(df):
     if len(df) < 2:
         return "資料不足"
 
